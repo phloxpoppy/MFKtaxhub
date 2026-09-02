@@ -34,6 +34,7 @@ function bindEvents(){
   $$('[data-action="scan"]').forEach(el=>el.addEventListener('click',()=>openReceipt()));
   $$('[data-close]').forEach(el=>el.addEventListener('click',()=>document.getElementById(el.dataset.close).close()));
   $('#profileSelect').addEventListener('change',e=>{state.activeProfile=e.target.value;renderAll();});
+  $('#settingsBtn').addEventListener('click',()=>showView('profile'));
   $('#yearSelect').addEventListener('change',e=>{state.year=Number(e.target.value);renderAll();});
   $('#searchInput').addEventListener('input',renderReceipts); $('#categoryFilter').addEventListener('change',renderReceipts); $('#monthFilter').addEventListener('change',renderReceipts);
   $('#receiptProfile').addEventListener('change',e=>fillCategories(e.target.value)); $('#receiptFile').addEventListener('change',handleImage);
@@ -94,6 +95,7 @@ function authError(msg){const el=$('#authError');el.textContent=msg;el.classList
 function showView(name){
   $$('.view').forEach(v=>v.classList.toggle('active',v.id===`${name}View`));
   $$('.bottom-nav [data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name));
+  $$('.desktop-nav [data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name));
   if(name==='reports')renderReport(); if(name==='profile')renderProfile(); window.scrollTo({top:0,behavior:'smooth'});
 }
 

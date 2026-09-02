@@ -1,0 +1,22 @@
+MYTAX HUB V2.2 — UPDATE LAYOUT SAHAJA
+
+Fail yang berubah:
+- index.html
+- app.js
+- premium-light.css
+- service-worker.js
+- package.json
+- README.md
+
+CARA GUNA PADA SOURCE PROJECT:
+1. Extract ZIP ini.
+2. Salin semua fail ke root projek MyTax Hub sedia ada.
+3. Benarkan overwrite fail dengan nama yang sama.
+4. Deploy semula keseluruhan folder projek ke Netlify.
+5. Di Netlify pilih Clear cache and deploy site.
+
+PENTING:
+Netlify tidak menggabungkan fail daripada deployment lama. Jangan upload ZIP
+update-only ini sebagai site baharu atau deployment penuh kerana asset dan
+Netlify Functions yang tidak terdapat dalam ZIP ini akan hilang. Gabungkan
+dengan source project terlebih dahulu, kemudian deploy keseluruhan projek.
