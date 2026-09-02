@@ -1,0 +1,2 @@
+.image-count{position:absolute;right:10px;top:10px;background:rgba(6,32,23,.82);color:#fff;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:700}
+@media(max-width:520px){.image-tools{gap:5px}.image-tools button,.image-tools a{padding:10px;font-size:11px}.image-tools span{font-size:11px}}
