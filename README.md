@@ -1,4 +1,4 @@
-# MyTax & Biz Audit Hub 2.6
+# MyTax & Biz Audit Hub 3.0
 
 PWA mobile-first untuk rekod resit cukai peribadi dan audit perniagaan. Projek ini sedia untuk drag-and-drop deploy ke Netlify atau disambungkan ke Git.
 
@@ -15,6 +15,11 @@ Versi 2.1 menggunakan tema cerah premium dengan palet putih, emerald dan aksen c
 - Migrasi selamat daripada struktur Supabase single-file lama
 - Upload gambar menggunakan penukaran Data URL ke Blob secara lokal tanpa melanggar CSP
 - Audit Evidence Bundle dengan penapis bulan/kategori, satu resit satu halaman A4, download PDF dan cetakan gambar
+- Pusat Dokumen Audit: resit pembelian, bukti bayaran LHDN CP500 dan penyata bank bulanan
+- Upload PDF atau gambar sehingga 10 MB untuk CP500 dan penyata bank, dengan paparan lightbox / PDF viewer
+- Rekod CP500: tahun, tarikh, amaun, ansuran dan nombor rujukan bayaran
+- Rekod penyata bank: bulan, nama bank dan empat digit akhir nombor akaun
+- Kategori sole proprietor tanpa had tuntutan palsu; tandakan amaun sebagai rekod dan sahkan kelayakan sebenar dengan ejen cukai/LHDN
 - Amaran OCR, pengesanan pendua dan loading state
 - Dashboard tahunan, carta bulanan, had kategori dan senarai perlu disemak
 - Supabase Auth, Row Level Security dan Storage
@@ -38,7 +43,7 @@ Kunci Gemini tidak berada dalam HTML atau JavaScript browser. `SUPABASE_ANON_KEY
 ## Konfigurasi Supabase
 
 1. Cipta projek Supabase.
-2. Buka **SQL Editor** dan jalankan seluruh kandungan `supabase-setup.sql`.
+2. Buka **SQL Editor** dan jalankan seluruh kandungan `supabase-setup.sql`. Untuk projek sedia ada, jalankan bahagian **Audit Hub v3** di hujung fail tersebut.
 3. Di **Authentication → URL Configuration**, masukkan URL Netlify sebagai Site URL.
 4. Untuk ujian mudah, anda boleh matikan **Confirm email**. Untuk penggunaan sebenar, biarkan pengesahan e-mel aktif.
 

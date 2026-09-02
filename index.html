@@ -34,7 +34,7 @@
       </button>
       <nav class="desktop-nav" aria-label="Navigasi desktop">
         <button class="active" data-view="dashboard"><i class="fa-solid fa-chart-pie"></i> Dashboard</button>
-        <button data-view="receipts"><i class="fa-solid fa-receipt"></i> Resit</button>
+        <button data-view="receipts"><i class="fa-solid fa-folder-open"></i> Dokumen</button>
         <button data-view="reports"><i class="fa-solid fa-file-lines"></i> Laporan</button>
         <button data-view="profile"><i class="fa-solid fa-user-gear"></i> Profil</button>
       </nav>
@@ -65,7 +65,7 @@
       <div class="stats-grid">
         <article class="stat-card claim"><span class="stat-icon"><i class="fa-solid fa-circle-check"></i></span><small>Jumlah boleh tuntut</small><strong id="totalClaim">RM0.00</strong><span id="claimCaption">Berdasarkan kategori</span></article>
         <article class="stat-card neutral"><span class="stat-icon"><i class="fa-solid fa-ban"></i></span><small>Bukan tuntutan</small><strong id="totalNonClaim">RM0.00</strong><span>Belanja lain / peribadi</span></article>
-        <article class="stat-card blue"><span class="stat-icon"><i class="fa-solid fa-receipt"></i></span><small>Jumlah resit</small><strong id="totalReceipts">0</strong><span id="reviewCaption">0 perlu disemak</span></article>
+        <article class="stat-card blue"><span class="stat-icon"><i class="fa-solid fa-folder-open"></i></span><small>Dokumen audit</small><strong id="totalReceipts">0</strong><span id="reviewCaption">0 perlu disemak</span></article>
       </div>
       <div class="dashboard-grid">
         <article class="panel"><div class="panel-head"><div><h2>Perbelanjaan bulanan</h2><p>Trend rekod sepanjang tahun</p></div></div><div id="monthChart" class="month-chart" aria-label="Carta perbelanjaan bulanan"></div></article>
@@ -75,14 +75,15 @@
     </section>
 
     <section id="receiptsView" class="view">
-      <div class="section-head"><div><p class="eyebrow">Dokumen</p><h1>Senarai resit</h1><p>Carian, semakan dan pengurusan semua rekod.</p></div><button class="primary-btn desktop-only" data-action="scan"><i class="fa-solid fa-plus"></i> Tambah resit</button></div>
+      <div class="section-head"><div><p class="eyebrow">Pusat Dokumen Audit</p><h1>Resit & bukti bayaran</h1><p>Resit perniagaan, bayaran CP500 dan penyata bank dalam satu rekod.</p></div><div class="doc-header-actions desktop-only"><button class="secondary-btn" data-action="upload-document"><i class="fa-solid fa-file-arrow-up"></i> Upload dokumen</button><button class="primary-btn" data-action="scan"><i class="fa-solid fa-camera"></i> Imbas resit</button></div></div>
       <div class="filter-panel no-print">
         <label class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" type="search" placeholder="Cari premis, item atau jumlah…"></label>
+        <select id="documentTypeFilter"><option value="ALL">Semua dokumen</option><option value="receipt">Resit pembelian</option><option value="cp500">Bayaran LHDN CP500</option><option value="bank_statement">Penyata bank</option></select>
         <select id="categoryFilter"><option value="ALL">Semua kategori</option></select>
         <select id="monthFilter"><option value="ALL">Semua bulan</option></select>
       </div>
       <div id="receiptList" class="receipt-list"></div>
-      <div id="emptyState" class="empty-state hidden"><i class="fa-solid fa-folder-open"></i><h3>Tiada resit dijumpai</h3><p>Tambah resit pertama atau ubah pilihan carian.</p><button class="primary-btn" data-action="scan">Tambah resit</button></div>
+      <div id="emptyState" class="empty-state hidden"><i class="fa-solid fa-folder-open"></i><h3>Tiada dokumen dijumpai</h3><p>Tambah resit, bukti CP500 atau penyata bank.</p><button class="primary-btn" data-action="upload-document">Upload dokumen</button></div>
     </section>
 
     <section id="reportsView" class="view">
@@ -126,7 +127,7 @@
 
   <nav class="bottom-nav no-print" aria-label="Navigasi utama">
     <button class="active" data-view="dashboard"><i class="fa-solid fa-chart-pie"></i><span>Utama</span></button>
-    <button data-view="receipts"><i class="fa-solid fa-receipt"></i><span>Resit</span></button>
+    <button data-view="receipts"><i class="fa-solid fa-folder-open"></i><span>Dokumen</span></button>
     <button class="scan-nav" data-action="scan"><i class="fa-solid fa-camera"></i><span>Scan</span></button>
     <button data-view="reports"><i class="fa-solid fa-file-lines"></i><span>Laporan</span></button>
     <button data-view="profile"><i class="fa-solid fa-user"></i><span>Profil</span></button>
@@ -152,7 +153,32 @@
     </form>
   </dialog>
 
+  <dialog id="documentDialog" class="app-dialog">
+    <form id="documentForm" method="dialog">
+      <header><div><p class="eyebrow">Pusat Dokumen Audit</p><h2>Upload dokumen</h2></div><button type="button" class="close-btn" data-close="documentDialog" aria-label="Tutup"><i class="fa-solid fa-xmark"></i></button></header>
+      <div class="dialog-body">
+        <input id="documentId" type="hidden">
+        <div class="form-grid">
+          <label>Jenis dokumen<select id="documentType"><option value="cp500">Bukti bayaran LHDN CP500</option><option value="bank_statement">Penyata bank bulanan</option></select></label>
+          <label>Profil<select id="documentProfile"></select></label>
+          <label>Tarikh dokumen / bayaran<input id="documentDate" type="date" required></label>
+          <label id="documentMonthField">Bulan penyata<input id="documentMonth" type="month"></label>
+          <label class="full">Fail dokumen<input id="documentFile" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required><small class="field-help">PDF atau gambar · maksimum 10 MB</small></label>
+          <label id="documentTitleField" class="full">Tajuk / penerangan<input id="documentTitle" required placeholder="Contoh: CP500 Ansuran 1 Tahun 2026"></label>
+          <label id="documentAmountField">Amaun bayaran (RM)<input id="documentAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></label>
+          <label id="cp500InstallmentField">Ansuran CP500<select id="cp500Installment"><option value="">Pilih jika berkaitan</option><option value="1">Ansuran 1</option><option value="2">Ansuran 2</option><option value="3">Ansuran 3</option><option value="4">Ansuran 4</option><option value="5">Ansuran 5</option><option value="6">Ansuran 6</option></select></label>
+          <label id="cp500ReferenceField" class="full">Nombor rujukan bayaran<input id="cp500Reference" placeholder="Rujukan resit / transaksi LHDN"></label>
+          <label id="bankNameField">Nama bank<input id="bankName" placeholder="Contoh: Maybank"></label>
+          <label id="accountLast4Field">4 digit akhir akaun<input id="accountLast4" inputmode="numeric" maxlength="4" placeholder="1234"></label>
+          <label class="full">Nota audit<textarea id="documentNotes" rows="2" placeholder="Contoh: Dipadankan dengan resit bulan ini."></textarea></label>
+        </div>
+      </div>
+      <footer><button type="button" class="secondary-btn" data-close="documentDialog">Batal</button><button id="saveDocumentBtn" type="submit" class="primary-btn"><i class="fa-solid fa-cloud-arrow-up"></i> Simpan dokumen</button></footer>
+    </form>
+  </dialog>
+
   <dialog id="imageDialog" class="image-dialog"><button type="button" class="close-btn" data-close="imageDialog" aria-label="Tutup"><i class="fa-solid fa-xmark"></i></button><div class="image-stage"><img id="fullReceiptImage" alt="Gambar resit"></div><div class="image-tools"><button id="prevImageBtn" aria-label="Gambar sebelumnya"><i class="fa-solid fa-chevron-left"></i></button><span id="galleryCount">1 / 1</span><button id="nextImageBtn" aria-label="Gambar seterusnya"><i class="fa-solid fa-chevron-right"></i></button><button id="rotateImageBtn"><i class="fa-solid fa-rotate-right"></i> Putar</button><a id="downloadImageBtn" download="resit.jpg"><i class="fa-solid fa-download"></i> Muat turun</a></div></dialog>
+  <dialog id="pdfDialog" class="pdf-dialog"><button type="button" class="close-btn" data-close="pdfDialog" aria-label="Tutup"><i class="fa-solid fa-xmark"></i></button><iframe id="pdfViewer" title="Paparan dokumen PDF"></iframe><a id="downloadPdfBtn" class="pdf-download" download><i class="fa-solid fa-download"></i> Muat turun PDF</a></dialog>
 
   <dialog id="authDialog" class="app-dialog auth-dialog"><form id="authForm" method="dialog"><header><div><p class="eyebrow">Keselamatan</p><h2>Log masuk MyTax Hub</h2></div></header><div class="dialog-body"><p class="helper-text">Gunakan akaun sendiri supaya resit dan maklumat cukai tidak bercampur dengan pengguna lain.</p><div class="form-grid"><label class="full">E-mel<input id="authEmail" type="email" required autocomplete="email"></label><label class="full">Kata laluan<input id="authPassword" type="password" minlength="6" required autocomplete="current-password"></label></div><div id="authError" class="alert danger hidden"></div></div><footer><button id="signupBtn" type="button" class="secondary-btn">Daftar</button><button id="loginBtn" type="submit" class="primary-btn">Log masuk</button></footer></form></dialog>
 

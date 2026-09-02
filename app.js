@@ -2,15 +2,15 @@
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const STORAGE = { receipts:'mytax_v2_receipts', profiles:'mytax_v2_profiles', pending:'mytax_v2_pending', theme:'mytax_theme' };
+const STORAGE = { receipts:'mytax_v2_receipts', documents:'mytax_v3_documents', profiles:'mytax_v2_profiles', pending:'mytax_v3_pending', theme:'mytax_theme' };
 const PERSONAL = {
   Lifestyle:{label:'Gaya hidup',limit:2500}, Medical:{label:'Perubatan',limit:10000}, Education:{label:'Pendidikan sendiri',limit:7000},
   Tech:{label:'Peranti & teknologi',limit:2500}, Insurance:{label:'Insurans / takaful',limit:3000}, Childcare:{label:'Penjagaan anak',limit:3000},
   Sports:{label:'Aktiviti sukan',limit:1000}, Others:{label:'Lain-lain / bukan tuntutan',limit:1}
 };
 const BUSINESS = {
-  'Biz-Supplies':{label:'Bekalan operasi',limit:25000}, 'Biz-Utilities':{label:'Utiliti',limit:20000}, 'Biz-Machines':{label:'Mesin & penyelenggaraan',limit:50000},
-  'Biz-Rental':{label:'Sewa premis',limit:50000}, 'Biz-Travel':{label:'Perjalanan bisnes',limit:15000}, 'Biz-Marketing':{label:'Pemasaran',limit:15000}, 'Biz-Others':{label:'Lain-lain',limit:25000}
+  'Biz-Supplies':{label:'Bekalan operasi'}, 'Biz-Utilities':{label:'Utiliti'}, 'Biz-Machines':{label:'Aset / elaun modal'},
+  'Biz-Rental':{label:'Sewa premis'}, 'Biz-Travel':{label:'Perjalanan bisnes'}, 'Biz-Marketing':{label:'Pemasaran'}, 'Biz-Others':{label:'Lain-lain / semakan cukai'}
 };
 const PROFILE_TYPES = {'Faisal':'personal','Nita':'personal','Aryan Laundry':'business'};
 const defaults = {
@@ -19,7 +19,7 @@ const defaults = {
 };
 
 const state = {
-  activeProfile:'Faisal', year:new Date().getFullYear(), receipts:read(STORAGE.receipts,[]), profiles:read(STORAGE.profiles,defaults),
+  activeProfile:'Faisal', year:new Date().getFullYear(), receipts:read(STORAGE.receipts,[]), documents:read(STORAGE.documents,[]), profiles:read(STORAGE.profiles,defaults),
   pending:read(STORAGE.pending,[]), supabase:null, user:null, cloud:false, installPrompt:null, imageRotation:0, editingImages:[], gallery:[], galleryIndex:0
 };
 
@@ -32,13 +32,14 @@ async function init(){
 function bindEvents(){
   $$('[data-view]').forEach(el=>el.addEventListener('click',()=>showView(el.dataset.view)));
   $$('[data-action="scan"]').forEach(el=>el.addEventListener('click',()=>openReceipt()));
+  $$('[data-action="upload-document"]').forEach(el=>el.addEventListener('click',()=>openDocument()));
   $$('[data-close]').forEach(el=>el.addEventListener('click',()=>document.getElementById(el.dataset.close).close()));
   $('#profileSelect').addEventListener('change',e=>{state.activeProfile=e.target.value;renderAll();});
   $('#settingsBtn').addEventListener('click',()=>showView('profile'));
   $('#yearSelect').addEventListener('change',e=>{state.year=Number(e.target.value);renderAll();});
-  $('#searchInput').addEventListener('input',renderReceipts); $('#categoryFilter').addEventListener('change',renderReceipts); $('#monthFilter').addEventListener('change',renderReceipts);
+  $('#searchInput').addEventListener('input',renderReceipts); $('#documentTypeFilter').addEventListener('change',renderReceipts); $('#categoryFilter').addEventListener('change',renderReceipts); $('#monthFilter').addEventListener('change',renderReceipts);
   $('#receiptProfile').addEventListener('change',e=>fillCategories(e.target.value)); $('#receiptFile').addEventListener('change',handleImage);
-  $('#receiptForm').addEventListener('submit',saveReceipt); $('#profileForm').addEventListener('submit',saveProfile);
+  $('#receiptForm').addEventListener('submit',saveReceipt); $('#documentForm').addEventListener('submit',saveDocument); $('#documentType').addEventListener('change',toggleDocumentFields); $('#profileForm').addEventListener('submit',saveProfile);
   $('#themeBtn').addEventListener('click',toggleTheme); $('#printBtn').addEventListener('click',()=>window.print()); $('#csvBtn').addEventListener('click',exportCSV);
   $('#backupBtn').addEventListener('click',backupJSON); $('#restoreInput').addEventListener('change',restoreJSON); $('#syncBtn').addEventListener('click',syncNow);
   $('#evidenceMonth').addEventListener('change',updateEvidenceCount);$('#evidenceCategory').addEventListener('change',updateEvidenceCount);
@@ -73,17 +74,20 @@ function setMode(mode){
 
 async function loadCloud(){
   if(!state.user)return; setMode('cloud');
-  const [pr,rr]=await Promise.all([
+  const [pr,rr,dr]=await Promise.all([
     state.supabase.from('tax_profiles').select('*').eq('owner_id',state.user.id),
-    state.supabase.from('receipts').select('*').eq('owner_id',state.user.id).order('date',{ascending:false})
+    state.supabase.from('receipts').select('*').eq('owner_id',state.user.id).order('date',{ascending:false}),
+    state.supabase.from('audit_documents').select('*').eq('owner_id',state.user.id).order('document_date',{ascending:false})
   ]);
-  if(pr.error||rr.error){toast('Cloud tidak dapat dimuatkan. Menggunakan salinan peranti.',true);return;}
+  if(pr.error||rr.error||dr.error){toast('Cloud tidak dapat dimuatkan. Pastikan SQL versi Audit Hub telah dijalankan.',true);return;}
   if(pr.data?.length) pr.data.forEach(p=>state.profiles[p.profile_key]={name:p.name,ic:p.ic||'',tin:p.tin||'',ref:p.reference||''});
   if(rr.data?.length){state.receipts=rr.data.map(mapCloudReceipt);await Promise.all(state.receipts.map(async r=>{r.images=await Promise.all(r.imagePaths.map(async path=>{const {data}=await state.supabase.storage.from('receipts').createSignedUrl(path,3600);return data?.signedUrl||'';}));r.image=r.images[0]||'';}));}
+  if(dr.data?.length){state.documents=dr.data.map(mapCloudDocument);await Promise.all(state.documents.map(async d=>{const {data}=await state.supabase.storage.from('audit-documents').createSignedUrl(d.filePath,3600);d.fileUrl=data?.signedUrl||'';}));}
   persist(); await syncNow(true); renderAll();
 }
 
 function mapCloudReceipt(r){const paths=r.image_paths?.length?r.image_paths:(r.image_url?[r.image_url]:[]);return{id:r.id,user:r.profile_key,date:r.date,store:r.store,category:r.category,items:r.items,amount:Number(r.amount),image:'',images:[],imagePath:paths[0]||'',imagePaths:paths,needsReview:!!r.needs_review,updatedAt:r.updated_at||new Date().toISOString()};}
+function mapCloudDocument(d){return{id:d.id,user:d.profile_key,type:d.document_type,date:d.document_date,title:d.title,amount:Number(d.amount)||0,notes:d.notes||'',month:d.statement_month||'',bankName:d.bank_name||'',accountLast4:d.account_last4||'',cp500Installment:d.cp500_installment||'',cp500Reference:d.cp500_reference||'',filePath:d.file_path,fileUrl:'',mimeType:d.mime_type||'',updatedAt:d.updated_at||new Date().toISOString()};}
 
 function updateAuthUI(){
   $('#logoutBtn').classList.toggle('hidden',!state.user); if(state.user)setMode('cloud');
@@ -111,20 +115,21 @@ function renderAll(){
 }
 
 function yearReceipts(profile=state.activeProfile){return state.receipts.filter(r=>r.user===profile&&new Date(`${r.date}T00:00:00`).getFullYear()===state.year);}
+function yearDocuments(profile=state.activeProfile){return state.documents.filter(d=>d.user===profile&&new Date(`${d.date}T00:00:00`).getFullYear()===state.year);}
 function categoryMap(profile=state.activeProfile){return PROFILE_TYPES[profile]==='business'?BUSINESS:PERSONAL;}
 function isClaim(r){return PROFILE_TYPES[r.user]==='business'||r.category!=='Others';}
 function money(n){return new Intl.NumberFormat('ms-MY',{style:'currency',currency:'MYR'}).format(Number(n)||0);}
 function formatDate(d){return new Intl.DateTimeFormat('ms-MY',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(`${d}T00:00:00`));}
 
 function renderDashboard(){
-  const rows=yearReceipts(),claim=rows.filter(isClaim).reduce((s,r)=>s+r.amount,0),non=rows.filter(r=>!isClaim(r)).reduce((s,r)=>s+r.amount,0),review=rows.filter(r=>r.needsReview).length;
-  $('#totalClaim').textContent=money(claim);$('#totalNonClaim').textContent=money(non);$('#totalReceipts').textContent=rows.length;$('#reviewCaption').textContent=`${review} perlu disemak`;
-  $('#claimCaption').textContent=PROFILE_TYPES[state.activeProfile]==='business'?'Perbelanjaan direkodkan':'Berdasarkan kategori';
+  const rows=yearReceipts(),docs=yearDocuments(),claim=rows.filter(isClaim).reduce((s,r)=>s+r.amount,0),non=rows.filter(r=>!isClaim(r)).reduce((s,r)=>s+r.amount,0),review=rows.filter(r=>r.needsReview).length;
+  $('#totalClaim').textContent=money(claim);$('#totalNonClaim').textContent=money(non);$('#totalReceipts').textContent=rows.length+docs.length;$('#reviewCaption').textContent=`${docs.filter(d=>d.type==='cp500').length} CP500 · ${docs.filter(d=>d.type==='bank_statement').length} penyata`;
+  $('#claimCaption').textContent=PROFILE_TYPES[state.activeProfile]==='business'?'Rekod perniagaan—semak kelayakan cukai':'Berdasarkan kategori';
   const monthly=Array(12).fill(0);rows.forEach(r=>monthly[new Date(`${r.date}T00:00:00`).getMonth()]+=r.amount);const max=Math.max(...monthly,1);const labels=['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogo','Sep','Okt','Nov','Dis'];
   $('#monthChart').innerHTML=monthly.map((n,i)=>`<div class="month-column" title="${labels[i]}: ${money(n)}"><div class="month-bar" style="height:${Math.max(2,n/max*100)}%"></div><small>${labels[i]}</small></div>`).join('');
   const attention=rows.filter(r=>r.needsReview||!r.image).slice(0,4);$('#attentionList').innerHTML=attention.length?attention.map(r=>`<div class="attention-item"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>${esc(r.store)}</strong><span>${r.needsReview?'Maklumat OCR perlu disemak':'Tiada gambar resit'}</span></div></div>`).join(''):'<div class="empty-mini"><i class="fa-solid fa-circle-check"></i><br>Semua rekod kelihatan lengkap.</div>';
   const cats=categoryMap();$('#limitsTitle').textContent=PROFILE_TYPES[state.activeProfile]==='business'?'Ringkasan kategori perniagaan':'Had pelepasan cukai';
-  $('#limitsGrid').innerHTML=Object.entries(cats).filter(([k])=>k!=='Others').map(([key,c])=>{const spent=rows.filter(r=>r.category===key).reduce((s,r)=>s+r.amount,0),pct=Math.min(100,spent/c.limit*100);return`<div class="limit-card"><div class="limit-top"><strong>${esc(c.label)}</strong><span>Had ${money(c.limit)}</span></div><div class="progress"><span style="width:${pct}%"></span></div><div class="limit-bottom"><span>Rekod ${money(spent)}</span><span>Baki ${money(Math.max(0,c.limit-spent))}</span></div></div>`}).join('');
+  $('#limitsGrid').innerHTML=Object.entries(cats).filter(([k])=>k!=='Others').map(([key,c])=>{const spent=rows.filter(r=>r.category===key).reduce((s,r)=>s+r.amount,0);if(PROFILE_TYPES[state.activeProfile]==='business')return`<div class="limit-card"><div class="limit-top"><strong>${esc(c.label)}</strong><span>Rekod</span></div><div class="limit-bottom"><span>${money(spent)}</span><span>Semak kelayakan</span></div></div>`;const pct=Math.min(100,spent/c.limit*100);return`<div class="limit-card"><div class="limit-top"><strong>${esc(c.label)}</strong><span>Had ${money(c.limit)}</span></div><div class="progress"><span style="width:${pct}%"></span></div><div class="limit-bottom"><span>Rekod ${money(spent)}</span><span>Baki ${money(Math.max(0,c.limit-spent))}</span></div></div>`}).join('');
 }
 
 function fillCategories(profile){
@@ -135,12 +140,20 @@ function fillCategories(profile){
   $('#receiptProfile').value=selectedProfile;
 }
 
-function filteredReceipts(){const q=$('#searchInput').value.toLowerCase(),cat=$('#categoryFilter').value,month=$('#monthFilter').value;return yearReceipts().filter(r=>(!q||`${r.store} ${r.items} ${r.amount}`.toLowerCase().includes(q))&&(cat==='ALL'||r.category===cat)&&(month==='ALL'||new Date(`${r.date}T00:00:00`).getMonth()+1===Number(month)));}
+function filteredReceipts(){const q=$('#searchInput').value.toLowerCase(),cat=$('#categoryFilter').value,month=$('#monthFilter').value,type=$('#documentTypeFilter').value;const receipts=yearReceipts().filter(r=>(type==='ALL'||type==='receipt')&&(!q||`${r.store} ${r.items} ${r.amount}`.toLowerCase().includes(q))&&(cat==='ALL'||r.category===cat)&&(month==='ALL'||new Date(`${r.date}T00:00:00`).getMonth()+1===Number(month))).map(r=>({...r,recordType:'receipt'}));const docs=yearDocuments().filter(d=>(type==='ALL'||d.type===type)&&(!q||`${d.title} ${d.notes} ${d.bankName} ${d.amount}`.toLowerCase().includes(q))&&(month==='ALL'||new Date(`${d.date}T00:00:00`).getMonth()+1===Number(month))).map(d=>({...d,recordType:'document'}));return[...receipts,...docs].sort((a,b)=>b.date.localeCompare(a.date));}
 
 function renderReceipts(){
-  const rows=filteredReceipts(),list=$('#receiptList');$('#emptyState').classList.toggle('hidden',rows.length>0);list.innerHTML=rows.map(r=>`<article class="receipt-card"><button class="receipt-thumb view-image" data-id="${r.id}" aria-label="Lihat gambar"><img src="${safeImage(r.image)}" alt=""></button><div class="receipt-main"><h3>${esc(r.store)}</h3><p>${esc(r.items)}</p><div class="receipt-meta"><span class="tag">${esc(categoryMap(r.user)[r.category]?.label||r.category)}</span>${r.needsReview?'<span class="tag review">Semak</span>':''}</div></div><div class="receipt-amount"><strong>${money(r.amount)}</strong><small>${formatDate(r.date)}</small></div><div class="receipt-actions"><button class="edit-receipt" data-id="${r.id}" aria-label="Edit"><i class="fa-solid fa-pen"></i></button><button class="delete-receipt" data-id="${r.id}" aria-label="Padam"><i class="fa-solid fa-trash"></i></button></div></article>`).join('');
-  $$('.view-image').forEach(b=>b.addEventListener('click',()=>viewImage(b.dataset.id)));$$('.edit-receipt').forEach(b=>b.addEventListener('click',()=>openReceipt(b.dataset.id)));$$('.delete-receipt').forEach(b=>b.addEventListener('click',()=>deleteReceipt(b.dataset.id)));
+  const rows=filteredReceipts(),list=$('#receiptList');$('#emptyState').classList.toggle('hidden',rows.length>0);list.innerHTML=rows.map(r=>r.recordType==='receipt'?`<article class="receipt-card"><button class="receipt-thumb view-image" data-id="${r.id}" aria-label="Lihat gambar"><img src="${safeImage(r.image)}" alt=""></button><div class="receipt-main"><h3>${esc(r.store)}</h3><p>${esc(r.items)}</p><div class="receipt-meta"><span class="tag">${esc(categoryMap(r.user)[r.category]?.label||r.category)}</span>${r.needsReview?'<span class="tag review">Semak</span>':''}</div></div><div class="receipt-amount"><strong>${money(r.amount)}</strong><small>${formatDate(r.date)}</small></div><div class="receipt-actions"><button class="edit-receipt" data-id="${r.id}" aria-label="Edit"><i class="fa-solid fa-pen"></i></button><button class="delete-receipt" data-id="${r.id}" aria-label="Padam"><i class="fa-solid fa-trash"></i></button></div></article>`:documentCard(r)).join('');
+  $$('.view-image').forEach(b=>b.addEventListener('click',()=>viewImage(b.dataset.id)));$$('.view-document').forEach(b=>b.addEventListener('click',()=>viewDocument(b.dataset.id)));$$('.edit-receipt').forEach(b=>b.addEventListener('click',()=>openReceipt(b.dataset.id)));$$('.edit-document').forEach(b=>b.addEventListener('click',()=>openDocument(b.dataset.id)));$$('.delete-receipt').forEach(b=>b.addEventListener('click',()=>deleteReceipt(b.dataset.id)));$$('.delete-document').forEach(b=>b.addEventListener('click',()=>deleteDocument(b.dataset.id)));
 }
+
+function documentCard(d){const cp=d.type==='cp500',label=cp?'Bayaran LHDN CP500':'Penyata bank',icon=cp?'fa-landmark':'fa-file-pdf',detail=cp?`${d.cp500Installment?`Ansuran ${d.cp500Installment} · `:''}${d.cp500Reference||'Bukti bayaran'}`:`${d.bankName||'Bank'}${d.accountLast4?` · •••• ${d.accountLast4}`:''}${d.month?` · ${d.month}`:''}`;return`<article class="receipt-card document-card"><button class="receipt-thumb ${d.mimeType==='application/pdf'?'pdf-thumb':'cp500-thumb'} view-document" data-id="${d.id}" aria-label="Lihat dokumen"><i class="fa-solid ${icon}"></i></button><div class="receipt-main"><h3>${esc(d.title)}</h3><p>${esc(detail)}</p><div class="receipt-meta"><span class="tag ${cp?'':'statement'}">${label}</span></div></div><div class="receipt-amount"><strong>${d.amount?money(d.amount):'PDF'}</strong><small>${formatDate(d.date)}</small></div><div class="receipt-actions"><button class="edit-document" data-id="${d.id}" aria-label="Edit"><i class="fa-solid fa-pen"></i></button><button class="delete-document" data-id="${d.id}" aria-label="Padam"><i class="fa-solid fa-trash"></i></button></div></article>`;}
+
+function toggleDocumentFields(){const cp=$('#documentType').value==='cp500';$('#documentMonthField').classList.toggle('hidden',cp);$('#bankNameField').classList.toggle('hidden',cp);$('#accountLast4Field').classList.toggle('hidden',cp);$('#documentAmountField').classList.toggle('hidden',!cp);$('#cp500InstallmentField').classList.toggle('hidden',!cp);$('#cp500ReferenceField').classList.toggle('hidden',!cp);$('#documentTitle').placeholder=cp?'Contoh: CP500 Ansuran 1 Tahun 2026':'Contoh: Penyata Bank Mei 2026';}
+function openDocument(id=''){const d=id?state.documents.find(x=>x.id===id):null;$('#documentForm').reset();$('#documentId').value=id;$('#documentProfile').innerHTML=Object.keys(PROFILE_TYPES).map(p=>`<option value="${esc(p)}">${esc(p)} · ${PROFILE_TYPES[p]==='business'?'Bisnes':'Peribadi'}</option>`).join('');$('#documentType').value=d?.type||'cp500';$('#documentProfile').value=d?.user||state.activeProfile;$('#documentDate').value=d?.date||new Date().toISOString().slice(0,10);$('#documentMonth').value=d?.month||'';$('#documentTitle').value=d?.title||'';$('#documentAmount').value=d?.amount||'';$('#cp500Installment').value=d?.cp500Installment||'';$('#cp500Reference').value=d?.cp500Reference||'';$('#bankName').value=d?.bankName||'';$('#accountLast4').value=d?.accountLast4||'';$('#documentNotes').value=d?.notes||'';$('#documentFile').required=!d;toggleDocumentFields();$('#documentDialog').showModal();}
+async function saveDocument(e){e.preventDefault();const btn=$('#saveDocumentBtn'),file=$('#documentFile').files[0],id=$('#documentId').value||crypto.randomUUID(),existing=state.documents.find(d=>d.id===id);if(file&&file.size>10*1024*1024){toast('Fail dokumen melebihi 10 MB.',true);return;}if(!file&&!existing){toast('Sila pilih fail dokumen.',true);return;}setButton(btn,true,'Menyimpan…');const fileData=file?await blobToDataURL(file):(existing?.fileData||'');const d={id,user:$('#documentProfile').value,type:$('#documentType').value,date:$('#documentDate').value,title:$('#documentTitle').value.trim(),amount:Number($('#documentAmount').value)||0,notes:$('#documentNotes').value.trim(),month:$('#documentMonth').value,bankName:$('#bankName').value.trim(),accountLast4:$('#accountLast4').value.trim(),cp500Installment:$('#cp500Installment').value,cp500Reference:$('#cp500Reference').value.trim(),filePath:existing?.filePath||'',fileUrl:fileData||(existing?.fileUrl||''),fileData,mimeType:file?.type||existing?.mimeType||'',updatedAt:new Date().toISOString()};const idx=state.documents.findIndex(x=>x.id===id);if(idx>=0)state.documents[idx]=d;else state.documents.unshift(d);queue({type:'document-upsert',id});persist();renderAll();$('#documentDialog').close();toast('Dokumen audit berjaya disimpan.');setButton(btn,false,'Simpan dokumen');if(navigator.onLine)await syncNow(false);}
+function viewDocument(id){const d=state.documents.find(x=>x.id===id),src=d?.fileUrl||d?.fileData;if(!src){toast('Fail dokumen belum tersedia.',true);return;}if(d.mimeType==='application/pdf'||src.toLowerCase().includes('.pdf')||src.startsWith('data:application/pdf')){$('#pdfViewer').src=src;$('#downloadPdfBtn').href=src;$('#downloadPdfBtn').download=`${slug(d.title)||'dokumen'}.pdf`;$('#pdfDialog').showModal();return;}state.gallery=[src];state.galleryIndex=0;state.galleryReceipt={date:d.date,store:d.title};renderGallery();$('#imageDialog').showModal();}
+async function deleteDocument(id){const d=state.documents.find(x=>x.id===id);if(!d||!confirm(`Padam dokumen “${d.title}”? Tindakan ini tidak boleh dibatalkan.`))return;state.documents=state.documents.filter(x=>x.id!==id);queue({type:'document-delete',id,filePath:d.filePath});persist();renderAll();toast('Dokumen telah dipadam.');if(navigator.onLine)await syncNow(false);}
 
 function openReceipt(id=''){
   $('#receiptForm').reset();$('#receiptId').value=id;state.editingImages=[];clearUncertain();
@@ -185,6 +198,8 @@ async function syncNow(silent=false){
   try{
     for(const job of [...state.pending]){
       if(job.type==='delete'){const {error}=await state.supabase.from('receipts').delete().eq('id',job.id).eq('owner_id',state.user.id);if(error)throw error;if(job.imagePaths?.length)await state.supabase.storage.from('receipts').remove(job.imagePaths);}
+      else if(job.type==='document-delete'){const {error}=await state.supabase.from('audit_documents').delete().eq('id',job.id).eq('owner_id',state.user.id);if(error)throw error;if(job.filePath)await state.supabase.storage.from('audit-documents').remove([job.filePath]);}
+      else if(job.type==='document-upsert'){const d=state.documents.find(x=>x.id===job.id);if(!d)continue;if(d.fileData){const ext=d.mimeType==='application/pdf'?'pdf':d.mimeType==='image/png'?'png':'jpg',path=`${state.user.id}/${d.id}.${ext}`,blob=dataUrlToBlob(d.fileData),{error}=await state.supabase.storage.from('audit-documents').upload(path,blob,{contentType:d.mimeType,upsert:true});if(error)throw error;const signed=await state.supabase.storage.from('audit-documents').createSignedUrl(path,3600);d.filePath=path;d.fileUrl=signed.data?.signedUrl||d.fileUrl;delete d.fileData;}const {error}=await state.supabase.from('audit_documents').upsert({id:d.id,owner_id:state.user.id,profile_key:d.user,document_type:d.type,document_date:d.date,title:d.title,amount:d.amount,notes:d.notes,statement_month:d.month||null,bank_name:d.bankName,account_last4:d.accountLast4,cp500_installment:d.cp500Installment||null,cp500_reference:d.cp500Reference,file_path:d.filePath,mime_type:d.mimeType,updated_at:d.updatedAt});if(error)throw error;}
       else{const r=state.receipts.find(x=>x.id===job.id);if(!r)continue;let paths=r.imagePaths||[],images=r.images?.length?r.images:(r.image?[r.image]:[]);if(images.some(x=>x.startsWith('data:'))){const uploaded=await uploadImages(r,images);paths=uploaded.paths;r.images=uploaded.urls;r.image=uploaded.urls[0]||'';r.imagePaths=paths;r.imagePath=paths[0]||'';}const {error}=await state.supabase.from('receipts').upsert({id:r.id,owner_id:state.user.id,profile_key:r.user,date:r.date,store:r.store,category:r.category,items:r.items,amount:r.amount,image_url:paths[0]||'',image_paths:paths,needs_review:r.needsReview,updated_at:r.updatedAt});if(error)throw error;}
       state.pending=state.pending.filter(x=>!(x.type===job.type&&x.id===job.id));persist();
     }
@@ -271,8 +286,8 @@ function fitInside(width,height,maxW,maxH){const scale=Math.min(maxW/width,maxH/
 function pdfSafe(value){return String(value??'').replace(/[^\x20-\x7E]/g,'-').slice(0,100);}
 
 function exportCSV(){const rows=yearReceipts(),csv=[['Tarikh','Profil','Premis','Kategori','Butiran','Jumlah (RM)','Perlu Semak'],...rows.map(r=>[r.date,r.user,r.store,r.category,r.items,r.amount.toFixed(2),r.needsReview?'Ya':'Tidak'])].map(row=>row.map(csvCell).join(',')).join('\n');download(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),`resit-${slug(state.activeProfile)}-${state.year}.csv`);toast('Fail CSV telah disediakan.');}
-function backupJSON(){download(new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),profiles:state.profiles,receipts:state.receipts},null,2)],{type:'application/json'}),`mytax-backup-${new Date().toISOString().slice(0,10)}.json`);}
-async function restoreJSON(e){try{const data=JSON.parse(await e.target.files[0].text());if(!Array.isArray(data.receipts)||!data.profiles)throw new Error('Format backup tidak sah');if(!confirm(`Restore ${data.receipts.length} resit? Data semasa akan digantikan.`))return;state.receipts=data.receipts;state.profiles=data.profiles;state.receipts.forEach(r=>queue({type:'upsert',id:r.id}));persist();renderAll();toast('Backup berjaya dipulihkan.');if(navigator.onLine)syncNow(true);}catch(err){toast(err.message,true);}finally{e.target.value='';}}
+function backupJSON(){download(new Blob([JSON.stringify({version:3,exportedAt:new Date().toISOString(),profiles:state.profiles,receipts:state.receipts,documents:state.documents},null,2)],{type:'application/json'}),`mytax-backup-${new Date().toISOString().slice(0,10)}.json`);}
+async function restoreJSON(e){try{const data=JSON.parse(await e.target.files[0].text());if(!Array.isArray(data.receipts)||!data.profiles)throw new Error('Format backup tidak sah');if(!confirm(`Restore ${data.receipts.length} resit dan ${(data.documents||[]).length} dokumen? Data semasa akan digantikan.`))return;state.receipts=data.receipts;state.documents=data.documents||[];state.profiles=data.profiles;state.receipts.forEach(r=>queue({type:'upsert',id:r.id}));state.documents.forEach(d=>queue({type:'document-upsert',id:d.id}));persist();renderAll();toast('Backup berjaya dipulihkan.');if(navigator.onLine)syncNow(true);}catch(err){toast(err.message,true);}finally{e.target.value='';}}
 
 function toggleTheme(){document.documentElement.classList.remove('dark');localStorage.setItem(STORAGE.theme,'light');}
 function applyTheme(){document.documentElement.classList.remove('dark');localStorage.setItem(STORAGE.theme,'light');$('#themeBtn i').className='fa-solid fa-sun';}
@@ -282,7 +297,7 @@ function registerPWA(){if('serviceWorker'in navigator)navigator.serviceWorker.re
 async function installPWA(){if(!state.installPrompt){toast('Gunakan menu browser dan pilih “Add to Home Screen”.');return;}state.installPrompt.prompt();await state.installPrompt.userChoice;state.installPrompt=null;hide('#installBtn');}
 
 function compressImage(file,max=1600,quality=.78){return new Promise((resolve,reject)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{let{width,height}=img;if(Math.max(width,height)>max){const s=max/Math.max(width,height);width=Math.round(width*s);height=Math.round(height*s);}const c=document.createElement('canvas');c.width=width;c.height=height;c.getContext('2d').drawImage(img,0,0,width,height);URL.revokeObjectURL(url);resolve(c.toDataURL('image/jpeg',quality));};img.onerror=reject;img.src=url;});}
-function persist(){localStorage.setItem(STORAGE.receipts,JSON.stringify(state.receipts));localStorage.setItem(STORAGE.profiles,JSON.stringify(state.profiles));localStorage.setItem(STORAGE.pending,JSON.stringify(state.pending));}
+function persist(){localStorage.setItem(STORAGE.receipts,JSON.stringify(state.receipts));localStorage.setItem(STORAGE.documents,JSON.stringify(state.documents));localStorage.setItem(STORAGE.profiles,JSON.stringify(state.profiles));localStorage.setItem(STORAGE.pending,JSON.stringify(state.pending));}
 function read(key,fallback){try{return JSON.parse(localStorage.getItem(key))||structuredClone(fallback);}catch{return structuredClone(fallback);}}
 function safeImage(src){return src&&(/^(data:image\/|blob:|https:\/\/)/).test(src)?src:'/assets/receipt-placeholder.svg';}
 function mask(v=''){if(!v)return'Belum diisi';if(v.length<5)return'••••';return`${v.slice(0,2)}${'•'.repeat(Math.min(8,v.length-4))}${v.slice(-2)}`;}
