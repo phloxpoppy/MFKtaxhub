@@ -190,7 +190,15 @@ async function syncNow(silent=false){
   }catch(err){badge.className='sync-badge error';badge.innerHTML='<i class="fa-solid fa-triangle-exclamation"></i><span>Sync gagal</span>';if(!silent)toast(`Sync gagal: ${err.message}`,true);}
 }
 
-async function uploadImages(r,images){const paths=[],urls=[];for(let i=0;i<images.length;i++){if(!images[i].startsWith('data:')&&r.imagePaths?.[i]){paths.push(r.imagePaths[i]);urls.push(images[i]);continue;}const blob=await fetch(images[i]).then(x=>x.blob()),path=`${state.user.id}/${r.id}-${i+1}.jpg`;const {error}=await state.supabase.storage.from('receipts').upload(path,blob,{contentType:'image/jpeg',upsert:true});if(error)throw error;const {data}=await state.supabase.storage.from('receipts').createSignedUrl(path,3600);paths.push(path);urls.push(data?.signedUrl||images[i]);}return{paths,urls};}
+async function uploadImages(r,images){const paths=[],urls=[];for(let i=0;i<images.length;i++){if(!images[i].startsWith('data:')&&r.imagePaths?.[i]){paths.push(r.imagePaths[i]);urls.push(images[i]);continue;}const blob=dataUrlToBlob(images[i]),path=`${state.user.id}/${r.id}-${i+1}.jpg`;const {error}=await state.supabase.storage.from('receipts').upload(path,blob,{contentType:blob.type||'image/jpeg',upsert:true});if(error)throw error;const {data}=await state.supabase.storage.from('receipts').createSignedUrl(path,3600);paths.push(path);urls.push(data?.signedUrl||images[i]);}return{paths,urls};}
+
+function dataUrlToBlob(dataUrl){
+  const match=/^data:([^;,]+);base64,(.+)$/.exec(dataUrl||'');
+  if(!match)throw new Error('Format gambar tempatan tidak sah. Ambil gambar semula.');
+  const binary=atob(match[2]),bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  return new Blob([bytes],{type:match[1]||'image/jpeg'});
+}
 function queue(job){state.pending=state.pending.filter(x=>!(x.type===job.type&&x.id===job.id));state.pending.push(job);}
 
 function renderProfile(){const p=state.profiles[state.activeProfile]||defaults[state.activeProfile];$('#profileName').value=p.name||'';$('#profileIC').value=p.ic||'';$('#profileTIN').value=p.tin||'';$('#profileRef').value=p.ref||'';}
