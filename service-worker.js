@@ -1,5 +1,5 @@
-const CACHE = 'mytax-hub-v2.0.0';
-const SHELL = ['/', '/index.html', '/styles.css', '/gallery.css', '/app.js', '/manifest.webmanifest', '/assets/icon-192.png', '/assets/icon-512.png'];
+const CACHE = 'mytax-hub-v2.1.0';
+const SHELL = ['/', '/index.html', '/styles.css', '/gallery.css', '/premium-light.css', '/app.js', '/manifest.webmanifest', '/assets/icon-192.png', '/assets/icon-512.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));

@@ -1,6 +1,8 @@
-# MyTax & Biz Audit Hub 2.0
+# MyTax & Biz Audit Hub 2.1
 
 PWA mobile-first untuk rekod resit cukai peribadi dan audit perniagaan. Projek ini sedia untuk drag-and-drop deploy ke Netlify atau disambungkan ke Git.
+
+Versi 2.1 menggunakan tema cerah premium dengan palet putih, emerald dan aksen champagne gold untuk rupa yang lebih profesional.
 
 ## Fungsi utama
 

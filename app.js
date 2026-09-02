@@ -204,8 +204,8 @@ function exportCSV(){const rows=yearReceipts(),csv=[['Tarikh','Profil','Premis',
 function backupJSON(){download(new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),profiles:state.profiles,receipts:state.receipts},null,2)],{type:'application/json'}),`mytax-backup-${new Date().toISOString().slice(0,10)}.json`);}
 async function restoreJSON(e){try{const data=JSON.parse(await e.target.files[0].text());if(!Array.isArray(data.receipts)||!data.profiles)throw new Error('Format backup tidak sah');if(!confirm(`Restore ${data.receipts.length} resit? Data semasa akan digantikan.`))return;state.receipts=data.receipts;state.profiles=data.profiles;state.receipts.forEach(r=>queue({type:'upsert',id:r.id}));persist();renderAll();toast('Backup berjaya dipulihkan.');if(navigator.onLine)syncNow(true);}catch(err){toast(err.message,true);}finally{e.target.value='';}}
 
-function toggleTheme(){const dark=!document.documentElement.classList.contains('dark');document.documentElement.classList.toggle('dark',dark);localStorage.setItem(STORAGE.theme,dark?'dark':'light');$('#themeBtn i').className=dark?'fa-solid fa-sun':'fa-solid fa-moon';}
-function applyTheme(){const dark=localStorage.getItem(STORAGE.theme)==='dark'||(!localStorage.getItem(STORAGE.theme)&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',dark);$('#themeBtn i').className=dark?'fa-solid fa-sun':'fa-solid fa-moon';}
+function toggleTheme(){document.documentElement.classList.remove('dark');localStorage.setItem(STORAGE.theme,'light');}
+function applyTheme(){document.documentElement.classList.remove('dark');localStorage.setItem(STORAGE.theme,'light');$('#themeBtn i').className='fa-solid fa-sun';}
 function updateOnlineState(){$('#offlineBar').classList.toggle('hidden',navigator.onLine);}
 
 function registerPWA(){if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js').catch(console.warn);}
