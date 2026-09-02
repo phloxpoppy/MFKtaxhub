@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="/gallery.css">
   <link rel="stylesheet" href="/premium-light.css">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
   <script defer src="/app.js"></script>
 </head>
 <body>
@@ -92,6 +93,19 @@
         <button id="backupBtn" class="secondary-btn"><i class="fa-solid fa-download"></i> Backup JSON</button>
         <label class="secondary-btn file-btn"><i class="fa-solid fa-upload"></i> Restore<input id="restoreInput" type="file" accept="application/json"></label>
       </div>
+      <article class="panel evidence-panel no-print">
+        <div class="panel-head">
+          <div><h2>Audit Evidence Bundle</h2><p>Muat turun atau cetak gambar resit, satu resit bagi setiap halaman A4.</p></div>
+          <span id="evidenceCount" class="evidence-count">0 resit</span>
+        </div>
+        <div class="evidence-controls">
+          <label><span>Bulan</span><select id="evidenceMonth"><option value="ALL">Semua bulan</option></select></label>
+          <label><span>Kategori</span><select id="evidenceCategory"><option value="ALL">Semua kategori</option></select></label>
+          <button id="downloadEvidenceBtn" class="primary-btn"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+          <button id="printEvidenceBtn" class="secondary-btn"><i class="fa-solid fa-images"></i> Print gambar resit</button>
+        </div>
+        <div class="evidence-note"><i class="fa-solid fa-circle-info"></i><span>Pilihan ini menggunakan profil dan tahun yang sedang aktif. Setiap halaman memaparkan tarikh, premis, kategori, jumlah dan gambar asal.</span></div>
+      </article>
       <article id="printReport" class="print-report panel">
         <div class="report-header"><div><h2>LAPORAN REKOD RESIT</h2><p>MyTax & Biz Audit Hub</p></div><img src="/assets/icon-192.png" alt="Logo" width="64" height="64"></div>
         <div id="reportIdentity" class="identity-box"></div>

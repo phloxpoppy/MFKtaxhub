@@ -1,4 +1,4 @@
-const CACHE = 'mytax-hub-v2.5.0';
+const CACHE = 'mytax-hub-v2.6.0';
 const SHELL = ['/', '/index.html', '/styles.css', '/gallery.css', '/premium-light.css', '/app.js', '/manifest.webmanifest', '/assets/icon-192.png', '/assets/icon-512.png'];
 
 self.addEventListener('install', event => {

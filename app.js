@@ -41,6 +41,8 @@ function bindEvents(){
   $('#receiptForm').addEventListener('submit',saveReceipt); $('#profileForm').addEventListener('submit',saveProfile);
   $('#themeBtn').addEventListener('click',toggleTheme); $('#printBtn').addEventListener('click',()=>window.print()); $('#csvBtn').addEventListener('click',exportCSV);
   $('#backupBtn').addEventListener('click',backupJSON); $('#restoreInput').addEventListener('change',restoreJSON); $('#syncBtn').addEventListener('click',syncNow);
+  $('#evidenceMonth').addEventListener('change',updateEvidenceCount);$('#evidenceCategory').addEventListener('change',updateEvidenceCount);
+  $('#downloadEvidenceBtn').addEventListener('click',downloadEvidencePDF);$('#printEvidenceBtn').addEventListener('click',printEvidenceBundle);
   $('#installBtn').addEventListener('click',installPWA); $('#logoutBtn').addEventListener('click',logout);
   $('#authForm').addEventListener('submit',login); $('#signupBtn').addEventListener('click',signup);
   $('#rotateImageBtn').addEventListener('click',()=>{state.imageRotation=(state.imageRotation+90)%360;$('#fullReceiptImage').style.transform=`rotate(${state.imageRotation}deg)`;});
@@ -208,7 +210,65 @@ function renderReport(){
   const p=state.profiles[state.activeProfile]||{},rows=yearReceipts(),total=rows.reduce((s,r)=>s+r.amount,0);$('#reportIdentity').innerHTML=`<strong>${esc(p.name||state.activeProfile)}</strong><br>No. KP / SSM: ${esc(mask(p.ic))}<br>No. TIN: ${esc(mask(p.tin))}<br>No. Rujukan: ${esc(mask(p.ref))}<br>Tahun: ${state.year}`;
   $('#reportSummary').innerHTML=`<div><small>Jumlah resit</small><strong>${rows.length}</strong></div><div><small>Boleh tuntut / rekod bisnes</small><strong>${money(rows.filter(isClaim).reduce((s,r)=>s+r.amount,0))}</strong></div><div><small>Jumlah keseluruhan</small><strong>${money(total)}</strong></div>`;
   $('#reportRows').innerHTML=rows.length?rows.map(r=>`<tr><td>${formatDate(r.date)}</td><td><strong>${esc(r.store)}</strong><br>${esc(r.items)}</td><td>${esc(categoryMap(r.user)[r.category]?.label||r.category)}</td><td>${money(r.amount)}</td></tr>`).join(''):'<tr><td colspan="4">Tiada rekod.</td></tr>';
+  renderEvidenceFilters();
 }
+
+function renderEvidenceFilters(){
+  const month=$('#evidenceMonth').value||'ALL',category=$('#evidenceCategory').value||'ALL';
+  const months=['Semua bulan','Januari','Februari','Mac','April','Mei','Jun','Julai','Ogos','September','Oktober','November','Disember'];
+  $('#evidenceMonth').innerHTML=months.map((m,i)=>`<option value="${i||'ALL'}">${m}</option>`).join('');
+  $('#evidenceCategory').innerHTML='<option value="ALL">Semua kategori</option>'+Object.entries(categoryMap()).map(([k,v])=>`<option value="${k}">${esc(v.label)}</option>`).join('');
+  $('#evidenceMonth').value=[...$('#evidenceMonth').options].some(o=>o.value===month)?month:'ALL';
+  $('#evidenceCategory').value=[...$('#evidenceCategory').options].some(o=>o.value===category)?category:'ALL';
+  updateEvidenceCount();
+}
+
+function evidenceReceipts(){
+  const month=$('#evidenceMonth').value,category=$('#evidenceCategory').value;
+  return yearReceipts().filter(r=>(month==='ALL'||new Date(`${r.date}T00:00:00`).getMonth()+1===Number(month))&&(category==='ALL'||r.category===category));
+}
+
+function updateEvidenceCount(){const rows=evidenceReceipts();$('#evidenceCount').textContent=`${rows.length} resit · ${rows.reduce((n,r)=>n+(r.images?.length||(r.image?1:0)),0)} gambar`;}
+
+async function downloadEvidencePDF(){
+  const rows=evidenceReceipts();if(!rows.length){toast('Tiada resit untuk pilihan ini.',true);return;}
+  if(!window.jspdf?.jsPDF){toast('Modul PDF belum dimuatkan. Semak internet atau gunakan butang Print.',true);return;}
+  const btn=$('#downloadEvidenceBtn');setButton(btn,true,'Menjana PDF…');
+  try{
+    const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+    for(let i=0;i<rows.length;i++){if(i)doc.addPage('a4','portrait');await drawEvidencePage(doc,rows[i],i+1,rows.length);}
+    doc.save(`audit-evidence-${slug(state.activeProfile)}-${state.year}.pdf`);toast(`${rows.length} halaman PDF berjaya disediakan.`);
+  }catch(error){console.error(error);toast(`PDF gagal: ${error.message}`,true);}finally{setButton(btn,false,'Download PDF');}
+}
+
+async function drawEvidencePage(doc,r,page,total){
+  const green=[7,95,70],gold=[184,145,71],images=r.images?.length?r.images:(r.image?[r.image]:[]),category=categoryMap(r.user)[r.category]?.label||r.category;
+  doc.setFillColor(...green);doc.rect(0,0,210,22,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(15);doc.text('AUDIT EVIDENCE - RECEIPT',15,13.5);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text(`Page ${page} of ${total}`,195,13.5,{align:'right'});
+  doc.setTextColor(22,48,39);doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text(pdfSafe(r.store),15,33);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(92,108,101);doc.text(`Profile: ${pdfSafe(state.profiles[r.user]?.name||r.user)}`,15,40);doc.text(`Date: ${formatDate(r.date)}`,15,46);doc.text(`Category: ${pdfSafe(category)}`,82,46);doc.text(`Amount: RM ${Number(r.amount).toFixed(2)}`,195,46,{align:'right'});
+  doc.setDrawColor(...gold);doc.setLineWidth(.6);doc.line(15,51,195,51);
+  const top=57,bottom=280,gap=5,available=bottom-top;
+  if(!images.length){doc.setDrawColor(210,220,216);doc.roundedRect(15,top,180,available,3,3,'S');doc.setTextColor(120,132,127);doc.text('No receipt image available',105,top+available/2,{align:'center'});}
+  else{
+    const slot=(available-gap*(images.length-1))/images.length;
+    for(let j=0;j<images.length;j++){const data=await imageAsDataURL(images[j]);const size=await imageDimensions(data);const fitted=fitInside(size.width,size.height,180,slot);const x=15+(180-fitted.w)/2,y=top+j*(slot+gap)+(slot-fitted.h)/2,format=data.startsWith('data:image/png')?'PNG':'JPEG';doc.setDrawColor(222,231,227);doc.roundedRect(15,top+j*(slot+gap),180,slot,2,2,'S');doc.addImage(data,format,x,y,fitted.w,fitted.h,`receipt-${r.id}-${j}`,'FAST');}
+  }
+  doc.setFontSize(7);doc.setTextColor(120,132,127);doc.text(`Generated by MyTax & Biz Audit Hub · ${new Date().toLocaleDateString('ms-MY')}`,15,290);doc.text(`Receipt ID: ${pdfSafe(r.id)}`,195,290,{align:'right'});
+}
+
+async function printEvidenceBundle(){
+  const rows=evidenceReceipts();if(!rows.length){toast('Tiada resit untuk pilihan ini.',true);return;}
+  const win=window.open('','_blank');if(!win){toast('Popup disekat. Benarkan popup untuk mencetak.',true);return;}
+  const pages=rows.map((r,i)=>{const images=r.images?.length?r.images:(r.image?[r.image]:[]),cat=categoryMap(r.user)[r.category]?.label||r.category;return`<section class="sheet"><header><div><small>AUDIT EVIDENCE</small><h1>${esc(r.store)}</h1></div><b>${i+1} / ${rows.length}</b></header><div class="meta"><span><b>Tarikh</b>${formatDate(r.date)}</span><span><b>Kategori</b>${esc(cat)}</span><span><b>Jumlah</b>${money(r.amount)}</span><span><b>Profil</b>${esc(state.profiles[r.user]?.name||r.user)}</span></div><main>${images.length?images.map(src=>`<img src="${safeImage(src)}">`).join(''):'<p>Tiada gambar resit</p>'}</main><footer>Receipt ID: ${esc(r.id)} · MyTax & Biz Audit Hub</footer></section>`}).join('');
+  win.document.write(`<!doctype html><html><head><title>Audit Evidence ${state.year}</title><style>@page{size:A4 portrait;margin:0}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:#17382e;background:#ddd}.sheet{width:210mm;height:297mm;padding:14mm 15mm 10mm;background:#fff;page-break-after:always;display:flex;flex-direction:column}.sheet:last-child{page-break-after:auto}header{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #075f46;padding-bottom:5mm}header small{color:#087253;font-weight:bold;letter-spacing:1.5px}h1{font-size:18px;margin:2mm 0 0}.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:3mm;padding:5mm 0}.meta span{font-size:10px;background:#f4f8f6;padding:3mm;border-radius:2mm}.meta b{display:block;font-size:8px;text-transform:uppercase;color:#68776f;margin-bottom:1mm}main{flex:1;min-height:0;border:1px solid #dde8e3;border-radius:3mm;padding:4mm;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3mm;overflow:hidden}main img{max-width:100%;max-height:100%;min-height:0;object-fit:contain;flex:1}main p{color:#888}footer{padding-top:4mm;font-size:8px;color:#7b8983}@media print{body{background:#fff}} </style></head><body>${pages}<script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`);win.document.close();
+}
+
+async function imageAsDataURL(src){if(src.startsWith('data:'))return src;const res=await fetch(src);if(!res.ok)throw new Error(`Gambar resit gagal dimuatkan (${res.status})`);return blobToDataURL(await res.blob());}
+function blobToDataURL(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob);});}
+function imageDimensions(src){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve({width:img.naturalWidth,height:img.naturalHeight});img.onerror=()=>reject(new Error('Format gambar tidak dapat dibaca.'));img.src=src;});}
+function fitInside(width,height,maxW,maxH){const scale=Math.min(maxW/width,maxH/height);return{w:width*scale,h:height*scale};}
+function pdfSafe(value){return String(value??'').replace(/[^\x20-\x7E]/g,'-').slice(0,100);}
 
 function exportCSV(){const rows=yearReceipts(),csv=[['Tarikh','Profil','Premis','Kategori','Butiran','Jumlah (RM)','Perlu Semak'],...rows.map(r=>[r.date,r.user,r.store,r.category,r.items,r.amount.toFixed(2),r.needsReview?'Ya':'Tidak'])].map(row=>row.map(csvCell).join(',')).join('\n');download(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),`resit-${slug(state.activeProfile)}-${state.year}.csv`);toast('Fail CSV telah disediakan.');}
 function backupJSON(){download(new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),profiles:state.profiles,receipts:state.receipts},null,2)],{type:'application/json'}),`mytax-backup-${new Date().toISOString().slice(0,10)}.json`);}

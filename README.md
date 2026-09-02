@@ -1,4 +1,4 @@
-# MyTax & Biz Audit Hub 2.5
+# MyTax & Biz Audit Hub 2.6
 
 PWA mobile-first untuk rekod resit cukai peribadi dan audit perniagaan. Projek ini sedia untuk drag-and-drop deploy ke Netlify atau disambungkan ke Git.
 
@@ -14,6 +14,7 @@ Versi 2.1 menggunakan tema cerah premium dengan palet putih, emerald dan aksen c
 - Mesej ralat OCR khusus untuk auth, model, kuota, gambar dan timeout
 - Migrasi selamat daripada struktur Supabase single-file lama
 - Upload gambar menggunakan penukaran Data URL ke Blob secara lokal tanpa melanggar CSP
+- Audit Evidence Bundle dengan penapis bulan/kategori, satu resit satu halaman A4, download PDF dan cetakan gambar
 - Amaran OCR, pengesanan pendua dan loading state
 - Dashboard tahunan, carta bulanan, had kategori dan senarai perlu disemak
 - Supabase Auth, Row Level Security dan Storage
