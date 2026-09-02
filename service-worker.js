@@ -1,4 +1,4 @@
-const CACHE = 'mytax-hub-v3.0.3-ios-force-update';
+const CACHE = 'mytax-hub-v3.0.4-netlify-root-deploy';
 const SHELL = ['/', '/index.html', '/styles.css', '/gallery.css', '/premium-light.css', '/version.js', '/app.js', '/manifest.webmanifest', '/assets/icon-192.png', '/assets/icon-512.png'];
 
 self.addEventListener('install', event => {
