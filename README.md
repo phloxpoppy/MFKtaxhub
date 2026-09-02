@@ -1,4 +1,4 @@
-# MyTax & Biz Audit Hub 2.2
+# MyTax & Biz Audit Hub 2.3
 
 PWA mobile-first untuk rekod resit cukai peribadi dan audit perniagaan. Projek ini sedia untuk drag-and-drop deploy ke Netlify atau disambungkan ke Git.
 
@@ -10,6 +10,8 @@ Versi 2.1 menggunakan tema cerah premium dengan palet putih, emerald dan aksen c
 - Scan kamera, compression gambar dan Gemini OCR melalui Netlify Function
 - Tambah, edit, lihat, putar, muat turun serta padam resit
 - Sokongan beberapa gambar atau muka surat bagi satu resit
+- Gemini authorization key melalui header `x-goog-api-key`
+- Mesej ralat OCR khusus untuk auth, model, kuota, gambar dan timeout
 - Amaran OCR, pengesanan pendua dan loading state
 - Dashboard tahunan, carta bulanan, had kategori dan senarai perlu disemak
 - Supabase Auth, Row Level Security dan Storage
