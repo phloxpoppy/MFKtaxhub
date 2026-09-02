@@ -306,7 +306,21 @@ function toggleTheme(){document.documentElement.classList.remove('dark');localSt
 function applyTheme(){document.documentElement.classList.remove('dark');localStorage.setItem(STORAGE.theme,'light');$('#themeBtn i').className='fa-solid fa-sun';}
 function updateOnlineState(){$('#offlineBar').classList.toggle('hidden',navigator.onLine);}
 
-function registerPWA(){if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js').catch(console.warn);}
+function registerPWA(){
+  if(!('serviceWorker'in navigator))return;
+  const build=window.MYTAX_BUILD||'current',workerUrl=`/service-worker.js?build=${encodeURIComponent(build)}`;
+  navigator.serviceWorker.register(workerUrl,{updateViaCache:'none'}).then(registration=>{
+    registration.update().catch(()=>{});
+    const activate=worker=>{if(worker?.state==='installed'&&navigator.serviceWorker.controller)worker.postMessage('SKIP_WAITING');};
+    activate(registration.waiting);registration.addEventListener('updatefound',()=>{const worker=registration.installing;worker?.addEventListener('statechange',()=>activate(worker));});
+  }).catch(console.warn);
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    const key=`mytax-reloaded-${build}`;
+    if(sessionStorage.getItem(key))return;
+    sessionStorage.setItem(key,'1');
+    location.replace(`${location.pathname}?v=${encodeURIComponent(build)}`);
+  });
+}
 async function installPWA(){if(!state.installPrompt){toast('Gunakan menu browser dan pilih “Add to Home Screen”.');return;}state.installPrompt.prompt();await state.installPrompt.userChoice;state.installPrompt=null;hide('#installBtn');}
 
 function compressImage(file,max=1600,quality=.78){return new Promise((resolve,reject)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{let{width,height}=img;if(Math.max(width,height)>max){const s=max/Math.max(width,height);width=Math.round(width*s);height=Math.round(height*s);}const c=document.createElement('canvas');c.width=width;c.height=height;c.getContext('2d').drawImage(img,0,0,width,height);URL.revokeObjectURL(url);resolve(c.toDataURL('image/jpeg',quality));};img.onerror=reject;img.src=url;});}
