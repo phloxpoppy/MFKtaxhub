@@ -1,4 +1,4 @@
-const CACHE = 'mytax-hub-v3.0.1-cp500-scan';
+const CACHE = 'mytax-hub-v3.0.2-mobile-scanner';
 const SHELL = ['/', '/index.html', '/styles.css', '/gallery.css', '/premium-light.css', '/app.js', '/manifest.webmanifest', '/assets/icon-192.png', '/assets/icon-512.png'];
 
 self.addEventListener('install', event => {

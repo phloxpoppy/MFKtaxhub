@@ -38,6 +38,12 @@ Versi 2.1 menggunakan tema cerah premium dengan palet putih, emerald dan aksen c
    - `GEMINI_MODEL` = `gemini-2.5-flash` (boleh ditukar jika model akaun anda berbeza)
 4. Trigger **Clear cache and deploy site**.
 
+## Selepas deployment versi baharu
+
+1. Buka `https://domain-anda/clear-cache.html` sekali pada browser atau PWA yang masih memaparkan versi lama.
+2. Tekan **Buka aplikasi terkini**.
+3. Aplikasi akan mendaftar semula cache PWA versi semasa secara automatik.
+
 Kunci Gemini tidak berada dalam HTML atau JavaScript browser. `SUPABASE_ANON_KEY` memang kunci awam dan dilindungi oleh polisi RLS.
 
 ## Konfigurasi Supabase
