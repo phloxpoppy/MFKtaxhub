@@ -75,7 +75,7 @@
     </section>
 
     <section id="receiptsView" class="view">
-      <div class="section-head"><div><p class="eyebrow">Pusat Dokumen Audit</p><h1>Resit & bukti bayaran</h1><p>Resit perniagaan, bayaran CP500 dan penyata bank dalam satu rekod.</p></div><div class="doc-header-actions desktop-only"><button class="secondary-btn" data-action="upload-document"><i class="fa-solid fa-file-arrow-up"></i> Upload dokumen</button><button class="primary-btn" data-action="scan"><i class="fa-solid fa-camera"></i> Imbas resit</button></div></div>
+      <div class="section-head"><div><p class="eyebrow">Pusat Dokumen Audit</p><h1>Resit & bukti bayaran</h1><p>Resit perniagaan, bayaran CP500 dan penyata bank dalam satu rekod.</p></div><div class="doc-header-actions desktop-only"><button class="secondary-btn" data-action="upload-document"><i class="fa-solid fa-file-arrow-up"></i> Upload dokumen</button><button class="secondary-btn" data-action="scan-statement"><i class="fa-solid fa-camera"></i> Imbas penyata</button><button class="secondary-btn" data-action="scan-cp500"><i class="fa-solid fa-camera"></i> Imbas CP500</button><button class="primary-btn" data-action="scan"><i class="fa-solid fa-camera"></i> Imbas resit</button></div></div>
       <div class="filter-panel no-print">
         <label class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" type="search" placeholder="Cari premis, item atau jumlah…"></label>
         <select id="documentTypeFilter"><option value="ALL">Semua dokumen</option><option value="receipt">Resit pembelian</option><option value="cp500">Bayaran LHDN CP500</option><option value="bank_statement">Penyata bank</option></select>
@@ -141,10 +141,13 @@
         <div id="uncertainAlert" class="alert warning hidden"><i class="fa-solid fa-triangle-exclamation"></i><span>AI kurang pasti pada medan bertanda. Sila semak sebelum simpan.</span></div>
         <input id="receiptId" type="hidden">
         <div class="form-grid">
+          <label class="full">Jenis rekod<select id="receiptRecordType"><option value="receipt">Resit pembelian / perbelanjaan</option><option value="cp500">Bayaran LHDN CP500</option></select></label>
           <label>Profil<select id="receiptProfile"></select></label>
           <label>Tarikh<input id="receiptDate" type="date" required></label>
-          <label>Nama premis<input id="receiptStore" required placeholder="Contoh: Kedai Buku MPH"></label>
-          <label>Kategori<select id="receiptCategory" required></select></label>
+          <label id="receiptStoreField">Nama premis<input id="receiptStore" required placeholder="Contoh: Kedai Buku MPH"></label>
+          <label id="receiptCategoryField">Kategori<select id="receiptCategory" required></select></label>
+          <label id="receiptCp500InstallmentField" class="hidden">Ansuran CP500<select id="receiptCp500Installment"><option value="">Pilih jika berkaitan</option><option value="1">Ansuran 1</option><option value="2">Ansuran 2</option><option value="3">Ansuran 3</option><option value="4">Ansuran 4</option><option value="5">Ansuran 5</option><option value="6">Ansuran 6</option></select></label>
+          <label id="receiptCp500ReferenceField" class="hidden">Nombor rujukan<input id="receiptCp500Reference" placeholder="Rujukan bayaran LHDN"></label>
           <label class="full">Butiran item / nota<textarea id="receiptItems" rows="2" required placeholder="Ringkasan barangan atau perkhidmatan"></textarea></label>
           <label>Jumlah (RM)<input id="receiptAmount" type="number" min="0.01" step="0.01" inputmode="decimal" required placeholder="0.00"></label>
         </div>
@@ -163,7 +166,7 @@
           <label>Profil<select id="documentProfile"></select></label>
           <label>Tarikh dokumen / bayaran<input id="documentDate" type="date" required></label>
           <label id="documentMonthField">Bulan penyata<input id="documentMonth" type="month"></label>
-          <label class="full">Fail dokumen<input id="documentFile" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required><small class="field-help">PDF atau gambar · maksimum 10 MB</small></label>
+          <label class="full">Fail dokumen<input id="documentFile" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" capture="environment" required><small class="field-help">PDF atau gambar · kamera boleh digunakan untuk imbas dokumen fizikal · maksimum 10 MB</small></label>
           <label id="documentTitleField" class="full">Tajuk / penerangan<input id="documentTitle" required placeholder="Contoh: CP500 Ansuran 1 Tahun 2026"></label>
           <label id="documentAmountField">Amaun bayaran (RM)<input id="documentAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></label>
           <label id="cp500InstallmentField">Ansuran CP500<select id="cp500Installment"><option value="">Pilih jika berkaitan</option><option value="1">Ansuran 1</option><option value="2">Ansuran 2</option><option value="3">Ansuran 3</option><option value="4">Ansuran 4</option><option value="5">Ansuran 5</option><option value="6">Ansuran 6</option></select></label>
