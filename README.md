@@ -1,4 +1,4 @@
-# MyTax & Biz Audit Hub 2.3
+# MyTax & Biz Audit Hub 2.4
 
 PWA mobile-first untuk rekod resit cukai peribadi dan audit perniagaan. Projek ini sedia untuk drag-and-drop deploy ke Netlify atau disambungkan ke Git.
 
@@ -12,6 +12,7 @@ Versi 2.1 menggunakan tema cerah premium dengan palet putih, emerald dan aksen c
 - Sokongan beberapa gambar atau muka surat bagi satu resit
 - Gemini authorization key melalui header `x-goog-api-key`
 - Mesej ralat OCR khusus untuk auth, model, kuota, gambar dan timeout
+- Migrasi selamat daripada struktur Supabase single-file lama
 - Amaran OCR, pengesanan pendua dan loading state
 - Dashboard tahunan, carta bulanan, had kategori dan senarai perlu disemak
 - Supabase Auth, Row Level Security dan Storage
@@ -38,6 +39,8 @@ Kunci Gemini tidak berada dalam HTML atau JavaScript browser. `SUPABASE_ANON_KEY
 2. Buka **SQL Editor** dan jalankan seluruh kandungan `supabase-setup.sql`.
 3. Di **Authentication → URL Configuration**, masukkan URL Netlify sebagai Site URL.
 4. Untuk ujian mudah, anda boleh matikan **Confirm email**. Untuk penggunaan sebenar, biarkan pengesahan e-mel aktif.
+
+Jika projek Supabase pernah digunakan oleh versi single-file, jalankan `supabase-migrate-from-single-file.sql` dan bukan setup kosong. Skrip ini mengekalkan rekod lama, menambah medan pemilikan, RLS dan private Storage.
 
 ## Nota migrasi
 

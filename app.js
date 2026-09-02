@@ -166,11 +166,11 @@ async function saveReceipt(e){
   const receipt={id,user:profile,date:$('#receiptDate').value,store:$('#receiptStore').value.trim(),category:$('#receiptCategory').value,items:$('#receiptItems').value.trim(),amount:Number($('#receiptAmount').value),image:state.editingImages[0]||'',images:state.editingImages,imagePath:existing?.imagePath||'',imagePaths:existing?.imagePaths||[],needsReview:$$('.field-uncertain').length>0,updatedAt:new Date().toISOString()};
   const duplicate=state.receipts.find(r=>r.id!==id&&r.user===receipt.user&&r.date===receipt.date&&Math.abs(r.amount-receipt.amount)<.01&&r.store.toLowerCase()===receipt.store.toLowerCase());
   if(duplicate&&!confirm('Resit dengan tarikh, premis dan jumlah yang sama sudah wujud. Simpan juga?')){setButton(btn,false,'Simpan resit');return;}
-  const idx=state.receipts.findIndex(r=>r.id===id);if(idx>=0)state.receipts[idx]=receipt;else state.receipts.unshift(receipt);queue({type:'upsert',id});persist();renderAll();$('#receiptDialog').close();toast(existing?'Resit berjaya dikemas kini.':'Resit berjaya disimpan.');setButton(btn,false,'Simpan resit');if(navigator.onLine)await syncNow(true);
+  const idx=state.receipts.findIndex(r=>r.id===id);if(idx>=0)state.receipts[idx]=receipt;else state.receipts.unshift(receipt);queue({type:'upsert',id});persist();renderAll();$('#receiptDialog').close();toast(existing?'Resit berjaya dikemas kini.':'Resit berjaya disimpan.');setButton(btn,false,'Simpan resit');if(navigator.onLine)await syncNow(false);
 }
 
 async function deleteReceipt(id){
-  const r=state.receipts.find(x=>x.id===id);if(!r||!confirm(`Padam resit “${r.store}”? Tindakan ini tidak boleh dibatalkan.`))return;state.receipts=state.receipts.filter(x=>x.id!==id);queue({type:'delete',id,imagePaths:r.imagePaths||[]});persist();renderAll();toast('Resit telah dipadam.');if(navigator.onLine)await syncNow(true);
+  const r=state.receipts.find(x=>x.id===id);if(!r||!confirm(`Padam resit “${r.store}”? Tindakan ini tidak boleh dibatalkan.`))return;state.receipts=state.receipts.filter(x=>x.id!==id);queue({type:'delete',id,imagePaths:r.imagePaths||[]});persist();renderAll();toast('Resit telah dipadam.');if(navigator.onLine)await syncNow(false);
 }
 
 function viewImage(id){const r=state.receipts.find(x=>x.id===id);state.gallery=r?.images?.length?r.images:(r?.image?[r.image]:[]);if(!state.gallery.length){toast('Gambar resit tidak tersedia.',true);return;}state.galleryIndex=0;state.galleryReceipt=r;renderGallery();$('#imageDialog').showModal();}
