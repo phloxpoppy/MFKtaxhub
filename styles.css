@@ -1285,7 +1285,6 @@ dialog::backdrop {
     height: 165px;
   }
 }
-toast{background:#10251d;color:white;border-radius:13px;padding:12px 15px;box-shadow:0 15px 40px rgba(0,0,0,.25);font-size:12px;animation:toastIn .25s ease}.toast.error{background:#7f1d1d}@keyframes toastIn{from{transform:translateY(10px);opacity:0}}
 
 @media print {
   .no-print, .bottom-nav, .topbar, .profile-strip, .report-actions, .section-head {
